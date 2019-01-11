@@ -80,7 +80,7 @@ $mail = new PHPMailer(true);                  // Passing `true` enables exceptio
 
 try {
     $conn = new PDO($dsn, $username, $password);
-    $bestOffer =  $conn->query("SELECT flight.name, flight.description, flight.id FROM flight JOIN category ON flight.flight_cat = category.id WHERE flight.flight_cat = 1");
+    $bestOffer =  $conn->query("SELECT flight.name, flight.description, flight.id FROM flight JOIN category ON flight.flight_cat = category.id WHERE flight.flight_cat = 1 LIMIT 3");
     $offer = $bestOffer->fetchAll(PDO::FETCH_ASSOC);
     $categories =  $conn->query("SELECT flight.name AS flights, flight.description, category.name FROM flight INNER JOIN category ON category.id = flight.flight_cat ORDER BY category.name desc");
     $categoryName = $categories->fetchAll(PDO::FETCH_ASSOC);
@@ -157,4 +157,177 @@ function moreInfo($info){
 }
 
 
+//MYSQL TABLE IN avip/tables.php
 
+function createRows($connection){
+    $rows =  $connection->query("SELECT flight.id, flight.name, flight.description, flight.flight_from, flight.flight_to, flight.price, category.name AS category FROM flight INNER JOIN category ON category.id = flight.flight_cat ORDER BY flight.id");
+    $tableRows = $rows->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($tableRows as $key):?>
+            <tr>
+                <td><?= $key['id'] ?></td>
+                <td><?= $key['name'] ?></td>
+                <td><?= $key['description'] ?></td>
+                <td><?= $key['flight_from'] ?></td>
+                <td><?= $key['flight_to'] ?></td>
+                <td><?= $key['price'] ?></td>
+                <td><?= $key['category'] ?></td>
+                <td style="text-align: center"><a href="?page=tables&delete&id=<?=$key['id']?>"><i class="far fa-trash-alt" style="color: #e82643"></i></a></td>
+                <td style="text-align: center"><a href="?page=tables&edit&id=<?=$key['id']?>"><i class="far fa-edit" style="color: #256be8"></i></a></td>
+            </tr>
+    <?php endforeach;
+}
+
+//ADMIN
+
+    if(isset($_POST['submitForm'])){
+        updateTable($conn, "submitForm");
+    }else if(isset($_POST['updateForm'])){
+        updateTable($conn, "updateForm");
+    }
+//MYSQL function for read table
+
+function updateTable($connection, $type){
+    //$rows =  $connection->query("SELECT * FROM flight INNER JOIN category ON category.id = flight.flight_cat ORDER BY category.name desc");
+
+
+
+    $flightName = $_POST['name'];
+    $flightDescription = $_POST['description'];
+    $flightFrom = $_POST['from'];
+    $flightTo = $_POST['to'];
+    $flightPrice = $_POST['price'];
+    $flightCategory = $_POST['category'];
+
+if($type == "submitForm") {
+
+    $sql = "INSERT INTO flight (name, description, flight_from, flight_to, price, flight_cat) VALUE (:name, :description, :from, :to, :price, :category)";
+
+    $statement = $connection->prepare($sql);
+    $statement->bindParam(':name', $flightName, PDO::PARAM_STR);
+    $statement->bindParam(':description', $flightDescription, PDO::PARAM_STR);
+    $statement->bindParam(':from', $flightFrom, PDO::PARAM_STR);
+    $statement->bindParam(':to', $flightTo, PDO::PARAM_STR);
+    $statement->bindParam(':price', $flightPrice, PDO::PARAM_STR);
+    $statement->bindParam(':category', $flightCategory, PDO::PARAM_STR);
+    $statement->execute();
+
+}else if($type == "updateForm") {
+    $flightID = $_GET['id'];
+    $stmt = $connection->prepare("SELECT * FROM flight WHERE flight.id = :id");
+    $stmt->bindParam(":id", $_GET['id']);
+    $stmt->execute();
+
+    if ($stmt->fetchColumn() > 0) {
+        $sql = "UPDATE flight SET name = :name, description = :description, flight_from = :from, flight_to = :to, price = :price, flight_cat = :category WHERE flight.id = :id";
+
+        $statement = $connection->prepare($sql);
+        $statement->bindParam(':id', $flightID, PDO::PARAM_STR);
+        $statement->bindParam(':name', $flightName, PDO::PARAM_STR);
+        $statement->bindParam(':description', $flightDescription, PDO::PARAM_STR);
+        $statement->bindParam(':from', $flightFrom, PDO::PARAM_STR);
+        $statement->bindParam(':to', $flightTo, PDO::PARAM_STR);
+        $statement->bindParam(':price', $flightPrice, PDO::PARAM_STR);
+        $statement->bindParam(':category', $flightCategory, PDO::PARAM_STR);
+        $statement->execute();
+
+    }
+}
+}
+//MYSQL Delete ROW in tables.php
+
+if(isset($_GET['id']) && isset($_GET['delete'])){
+    DeleteRow($conn);
+}
+function DeleteRow($connection){
+    $rowId = $_GET['id'];
+    $sql = "DELETE FROM flight WHERE flight.id = $rowId";
+
+    $statement = $connection->prepare($sql);
+    $statement->bindParam(':name', $flightName, PDO::PARAM_STR);
+    $statement->bindParam(':description', $flightDescription, PDO::PARAM_STR);
+    $statement->bindParam(':from', $flightFrom, PDO::PARAM_STR);
+    $statement->bindParam(':to', $flightTo, PDO::PARAM_STR);
+    $statement->bindParam(':price', $flightPrice, PDO::PARAM_STR);
+    $statement->bindParam(':category', $flightCategory, PDO::PARAM_STR);
+    $statement->execute();
+}
+
+//MYSQL EDIT ROW in tables.php
+
+function editRow($connection){
+    $rowId = $_GET['id'];
+
+    $sql = "SELECT * FROM flight WHERE flight.id = :id";
+    $statement = $connection->prepare($sql);
+    $statement->bindParam(':id', $rowId, PDO::PARAM_STR);
+    $statement->execute();
+    $value = $statement->fetchAll(PDO::FETCH_ASSOC);
+    ?>
+<div class="span9" id="content">
+    <div class="block">
+        <div class="navbar navbar-inner block-header">
+            <div class="muted pull-left">Editing Form <?=$value[0]['id']?></div>
+        </div>
+        <div class="block-content collapse in">
+            <div class="span12">
+                <form action="" method="post">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" class="form-control" id="name" name="name" value="<?=$value[0]['name']?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <input type="text" class="form-control" id="description" name="description" value="<?=$value[0]['description']?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="from">Flight From</label>
+                        <input type="text" class="form-control" id="from" name="from" value="<?=$value[0]['flight_from']?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="to">Flight To</label>
+                        <input type="text" class="form-control" id="to" name="to" value="<?=$value[0]['flight_to']?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="price">Price</label>
+                        <input type="text" class="form-control" id="price" name="price" value="<?=$value[0]['price']?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <select class="form-control" id="category" name="category">
+                            <option value="1">Sale</option>
+                            <option value="2">Festival</option>
+                            <option value="3">Family Vacation</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-default" name="updateForm">Edit</button>
+                   <a href="?page=tables" class="btn btn-danger">Cancel</a>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<?php
+}
+
+//login
+if (!isset($_POST['login'])) {
+
+}else{
+    if($_POST['username'] == "admin" && $_POST['password'] == 'admin'){
+        $_SESSION['username'] = 'admin';
+        //var_dump($_POST['username']);
+        include "avip/tables.php";
+    }else{
+        echo "neteisingi duomenys";
+    }
+}
+
+//if(isset($_POST['login'])){
+//    $login = $_POST['username'];
+//    $password = $_POST['password'];
+//    echo $login . "<br>" . $password;
+//}
